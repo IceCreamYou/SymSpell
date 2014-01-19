@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Testing SymSpell</title>
+</head>
+<style>
+body {
+  margin: 0 auto;
+  max-width: 1536px;
+}
+.section {
+  border: 1px solid black;
+  margin: 40px;
+  padding: 20px;
+  position: relative;
+}
+.section:before {
+  background-color: #FFFFFF;
+  content: attr(data-label);
+  font-size: 20px;
+  font-style: italic;
+  font-weight: bold;
+  left: 15px;
+  line-height: 20px;
+  padding: 0 5px;
+  position: absolute;
+  text-decoration: underline;
+  top: -10px;
+}
+label {
+  display: block;
+  font-weight: bold;
+  padding: 10px 0 5px;
+}
+textarea {
+  width: 100%;
+}
+.error {
+  color: red;
+}
+input[type=submit] {
+  margin-top: 10px;
+}
+#results {
+  border-color: #CCCCCC;
+  margin: 20px 0;
+}
+#results:before {
+  color: #5A5A5A;
+}
+#log {
+  max-height: 200px;
+  overflow-y: auto;
+}
+table {
+  border-collapse: collapse;
+}
+tbody tr:nth-child(2n) {
+  background-color: #EEEEEE;
+}
+td {
+  border: 1px solid #AAAAAA;
+  padding: 4px 8px;
+}
+thead tr {
+  background-color: #DDDDDD !important;
+  font-style: italic;
+}
+</style>
+<body>
+  <form class="section" id="builder" data-label="Construct">
+    <label for="distance">Maximum edit distance:</label>
+    <select id="distance" name="distance">
+      <option value="1">1</option>
+      <option value="2" selected="selected">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+    <label for="mode">Results to display:</label>
+    <select id="mode" name="mode">
+      <option value="0">Top</option>
+      <option value="1">Smallest</option>
+      <option value="2" selected="selected">All</option>
+    </select>
+    <label for="corpus">Corpus:</label>
+    <textarea id="corpus" name="corpus"></textarea>
+    <input type="submit" value="Build dictionary" />
+  </form>
+  <form class="section" id="executor" data-label="Test">
+    <label for="input">Input:</label>
+    <input type="text" id="input" name="input" />
+    <div class="section" id="results" data-label="Suggestions">
+      <table>
+        <thead>
+          <tr><td>Term</td><td>Distance</td><td>Count</td></tr>
+        </thead>
+        <tbody id="suggestions">
+        </tbody>
+      </table>
+    </div>
+    <input type="submit" value="Get suggestions" />
+  </form>
+  <div class="section" data-label="Log">
+    <div id="log">
+    </div>
+  </div>
+  <script src="symspell.js"></script>
+  <script>
+function sanitize(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML.replace(/"/g, '&quot;');
+}
+function log(message, error) {
+  var p = document.createElement('p');
+  var d = document.getElementById('log');
+  p.textContent = message;
+  if (error) p.className = 'error';
+  d.insertBefore(p, d.firstChild);
+}
+window.onload = function() {
+  window.corrector = new SymSpell();
+  document.getElementById('builder').addEventListener('submit', function(e) {
+    e.preventDefault();
+    try {
+      var dist = document.getElementById('distance').value,
+          mode = document.getElementById('mode').value;
+      corrector = new SymSpell(dist, mode);
+      corrector.addWords(document.getElementById('corpus').value);
+      log('dictionary built');
+    } catch(f) {
+      log(f.name + ' (' + f.fileName.split(/\/|\\/g).pop() + ', line ' + f.lineNumber + '): ' + f.message, true);
+      throw f;
+    }
+  }, false);
+  document.getElementById('executor').addEventListener('submit', function(e) {
+    e.preventDefault();
+    try {
+      var word = document.getElementById('input').value;
+      var results = corrector.lookup(word);
+      var output = [];
+      for (var i = 0, l = results.length; i < l; i++) {
+        output.push('<tr><td>' + sanitize(results[i].term) + '</td><td>' + results[i].distance + '</td><td>' + results[i].count + '</td></tr>');
+      }
+      document.getElementById('suggestions').innerHTML = output.join('\n');
+      log('suggestions output for word ' + word.toUpperCase());
+    } catch(f) {
+      log(f.name + ' (' + f.fileName.split(/\/|\\/g).pop() + ', line ' + f.lineNumber + '): ' + f.message, true);
+      throw f;
+    }
+  }, false);
+};
+  </script>
+</body>
+</html>
